@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AISeekhegaIndia — Auth Implementation Plan</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a222d;
+      --surface-2: #232d3b;
+      --border: #2e3a4a;
+      --text: #e8eef4;
+      --muted: #8b9aab;
+      --accent: #3d9a6a;
+      --accent-dim: rgba(61, 154, 106, 0.15);
+      --warn: #d4a017;
+      --warn-dim: rgba(212, 160, 23, 0.12);
+      --locked: #4a9eff;
+      --locked-dim: rgba(74, 158, 255, 0.12);
+      --danger: #e05c5c;
+      --font: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+      --display: "Fraunces", Georgia, serif;
+    }
+
+    @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(61, 154, 106, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 90% 0%, rgba(74, 158, 255, 0.08), transparent),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(1.9rem, 4vw, 2.6rem);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+    }
+
+    .lede {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 62ch;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .chip {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .chip.locked {
+      background: var(--locked-dim);
+      border-color: rgba(74, 158, 255, 0.35);
+      color: var(--locked);
+    }
+
+    nav.toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    nav.toc h2 {
+      font-size: 0.8rem;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    nav.toc ol {
+      padding-left: 1.25rem;
+      columns: 1;
+    }
+
+    @media (min-width: 640px) {
+      nav.toc ol { columns: 2; }
+    }
+
+    nav.toc a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+
+    nav.toc a:hover { color: var(--accent); }
+
+    nav.toc li { margin-bottom: 0.35rem; break-inside: avoid; }
+
+    section {
+      margin-bottom: 2.75rem;
+    }
+
+    h2 {
+      font-family: var(--display);
+      font-size: 1.55rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-top: 0.5rem;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.6rem;
+      color: var(--text);
+    }
+
+    p { margin-bottom: 0.85rem; color: var(--muted); }
+    p strong, li strong { color: var(--text); font-weight: 600; }
+
+    ul, ol { margin: 0.5rem 0 1rem 1.25rem; color: var(--muted); }
+    li { margin-bottom: 0.4rem; }
+
+    .exec {
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .exec-item {
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      gap: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      align-items: start;
+    }
+
+    @media (max-width: 560px) {
+      .exec-item { grid-template-columns: 1fr; }
+    }
+
+    .exec-item .label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      padding-top: 0.15rem;
+    }
+
+    .exec-item .value { font-size: 0.95rem; color: var(--text); }
+
+    .decision {
+      background: var(--locked-dim);
+      border: 1px solid rgba(74, 158, 255, 0.3);
+      border-left: 3px solid var(--locked);
+      border-radius: 0 6px 6px 0;
+      padding: 0.85rem 1rem;
+      margin: 1rem 0;
+    }
+
+    .decision .tag {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--locked);
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .decision p { margin: 0; color: var(--text); font-size: 0.95rem; }
+
+    .warn-box {
+      background: var(--warn-dim);
+      border: 1px solid rgba(212, 160, 23, 0.35);
+      border-left: 3px solid var(--warn);
+      border-radius: 0 6px 6px 0;
+      padding: 0.85rem 1rem;
+      margin: 1rem 0;
+    }
+
+    .warn-box .tag {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--warn);
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .warn-box p { margin: 0; color: var(--text); font-size: 0.95rem; }
+
+    .diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      overflow-x: auto;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .diagram pre {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      line-height: 1.45;
+      color: #a8c5b0;
+      white-space: pre;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface-2);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    td { background: var(--surface); color: var(--muted); }
+    td code, p code, li code {
+      font-family: var(--mono);
+      font-size: 0.84em;
+      background: var(--surface-2);
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+      color: #b8d4c0;
+    }
+
+    .phase {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.25rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .phase-head {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .phase-num {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+    }
+
+    .phase h3 { margin: 0; font-size: 1rem; }
+
+    .phase .accept {
+      margin-top: 0.65rem;
+      font-size: 0.88rem;
+    }
+
+    .phase .accept strong { color: var(--accent); }
+
+    .tree {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.25rem;
+      color: #a8c5b0;
+      overflow-x: auto;
+      line-height: 1.55;
+      margin: 1rem 0;
+    }
+
+    .checklist li { list-style: none; margin-left: -1.25rem; padding-left: 0; }
+    .checklist li::before {
+      content: "☐ ";
+      color: var(--accent);
+      font-family: var(--mono);
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .compare td:nth-child(1) { color: var(--text); font-weight: 500; }
+    .picked { background: var(--accent-dim) !important; }
+    .picked td { color: var(--text) !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="eyebrow">AISeekhegaIndia · Backend</p>
+      <h1>Google OAuth Auth Implementation Plan</h1>
+      <p class="lede">
+        Locked architecture for adding Google sign-in to a <strong style="color:var(--text)">Fastify + TypeScript</strong> API with <strong style="color:var(--text)">Neon</strong> (Postgres).
+        Every material decision is pre-chosen so an agent can execute without asking for access or clarifications.
+      </p>
+      <div class="meta">
+        <span class="chip locked">All decisions locked</span>
+        <span class="chip">Fastify + TypeScript</span>
+        <span class="chip">Neon + Prisma</span>
+        <span class="chip">Cloud Run</span>
+        <span class="chip">Plan only — no code yet</span>
+      </div>
+    </header>
+
+    <nav class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#exec">Executive recommendation</a></li>
+        <li><a href="#decisions">Decision register</a></li>
+        <li><a href="#diagram">Architecture diagram</a></li>
+        <li><a href="#framework">Framework &amp; structure</a></li>
+        <li><a href="#auth">Auth design</a></li>
+        <li><a href="#db">Database &amp; data layer</a></li>
+        <li><a href="#gcp">GCP recommendations</a></li>
+        <li><a href="#security">Security checklist</a></li>
+        <li><a href="#phases">Implementation phases</a></li>
+        <li><a href="#env">Env var checklist</a></li>
+        <li><a href="#risks">Risks &amp; deferred</a></li>
+        <li><a href="#pr">First PR / milestone</a></li>
+      </ol>
+    </nav>
+
+    <section id="exec">
+      <h2>1. Executive recommendation</h2>
+      <div class="exec">
+        <div class="exec-item">
+          <span class="label">Framework</span>
+          <span class="value">Migrate the Express stub to <strong>Fastify + TypeScript</strong>. Layered plugins/modules; do not use NestJS.</span>
+        </div>
+        <div class="exec-item">
+          <span class="label">OAuth flow</span>
+          <span class="value"><strong>Backend-mediated Authorization Code</strong> (redirect to Google → callback on API). Scopes: <code>openid email profile</code>.</span>
+        </div>
+        <div class="exec-item">
+          <span class="label">Session</span>
+          <span class="value"><strong>Signed JWT in httpOnly Secure cookie</strong> (<code>SameSite=Lax</code>). No Passport. No opaque server sessions table for v1.</span>
+        </div>
+        <div class="exec-item">
+          <span class="label">Database</span>
+          <span class="value"><strong>Neon</strong> (serverless Postgres) via Prisma. Same Neon project for local + prod (use separate branches/DBs); no Docker Postgres, no Cloud SQL.</span>
+        </div>
+        <div class="exec-item">
+          <span class="label">GCP host</span>
+          <span class="value"><strong>Cloud Run</strong> (containerized Node API). Secrets from Secret Manager in prod; <code>.env</code> locally. GCP used for OAuth client + hosting, not for the database.</span>
+        </div>
+        <div class="exec-item">
+          <span class="label">Auth provider</span>
+          <span class="value"><strong>Custom Google OAuth</strong> with existing client credentials. Do <em>not</em> adopt Firebase Auth / Identity Platform for v1.</span>
+        </div>
+        <div class="exec-item">
+          <span class="label">Front contract</span>
+          <span class="value">Next.js: “Sign in” → <code>GET /api/v1/auth/google</code>. After login, call <code>GET /api/v1/auth/me</code> with <code>credentials: 'include'</code>.</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="decisions">
+      <h2>2. Decision register (no clarifications needed)</h2>
+      <p>An implementing agent must treat these as fixed. Do not prompt the user for choices or credentials.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Topic</th>
+            <th>Locked decision</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Framework</td>
+            <td><strong>Migrate Express stub → Fastify</strong></td>
+            <td>User choice; schema-friendly, fast, TypeScript-first plugins</td>
+          </tr>
+          <tr>
+            <td>OAuth style</td>
+            <td><strong>Server redirect + code exchange</strong></td>
+            <td>Client secret stays on server; simple for Next.js + separate API</td>
+          </tr>
+          <tr>
+            <td>PKCE</td>
+            <td><strong>Yes (S256)</strong> even with confidential client</td>
+            <td>Defense in depth; Google supports it</td>
+          </tr>
+          <tr>
+            <td>Session type</td>
+            <td><strong>JWT cookie</strong> (7-day expiry, no refresh token store in v1)</td>
+            <td>No Redis/session table yet; logout clears cookie</td>
+          </tr>
+          <tr>
+            <td>Cookie name</td>
+            <td><code>asid</code></td>
+            <td>Short, non-descriptive</td>
+          </tr>
+          <tr>
+            <td>JWT claims</td>
+            <td><code>sub</code> (user id UUID), <code>email</code>, <code>iat</code>, <code>exp</code></td>
+            <td>Enough for <code>/me</code> and future progress</td>
+          </tr>
+          <tr>
+            <td>CSRF</td>
+            <td><strong>SameSite=Lax + state param on OAuth</strong>; no double-submit token in v1</td>
+            <td>OAuth uses top-level redirects; API reads use GET; mutations later add CSRF if needed</td>
+          </tr>
+          <tr>
+            <td>Database</td>
+            <td><strong>Neon + Prisma</strong></td>
+            <td>Managed serverless Postgres; free tier friendly; Prisma migrations work unchanged</td>
+          </tr>
+          <tr>
+            <td>ORM</td>
+            <td><strong>Prisma</strong> (not Drizzle)</td>
+            <td>Faster solo DX; schema + migrate CLI</td>
+          </tr>
+          <tr>
+            <td>Local DB</td>
+            <td><strong>Neon dev branch</strong> (or same project with <code>?sslmode=require</code>)</td>
+            <td>No local Docker Postgres; one less moving part</td>
+          </tr>
+          <tr>
+            <td>Prod DB</td>
+            <td><strong>Neon production branch / DB</strong>; pooled URL for Cloud Run</td>
+            <td>Scale-to-zero friendly; no Cloud SQL cost</td>
+          </tr>
+          <tr>
+            <td>Neon connection</td>
+            <td>App runtime: <strong>pooled</strong> <code>DATABASE_URL</code>; migrations: <strong>direct</strong> <code>DIRECT_URL</code></td>
+            <td>Prisma migrate needs direct; Cloud Run needs pooler</td>
+          </tr>
+          <tr>
+            <td>API host</td>
+            <td><strong>Cloud Run</strong> (region <code>asia-south1</code>)</td>
+            <td>Near India users; scale-to-zero; simple container</td>
+          </tr>
+          <tr>
+            <td>API base URLs</td>
+            <td>Local <code>http://localhost:4000</code>; prod placeholder <code>https://api.aiseekhegaindia.com</code></td>
+            <td>Align with front domain; map custom domain on Cloud Run later</td>
+          </tr>
+          <tr>
+            <td>Redirect URIs</td>
+            <td>Local: <code>http://localhost:4000/api/v1/auth/google/callback</code><br>Prod: <code>https://api.aiseekhegaindia.com/api/v1/auth/google/callback</code></td>
+            <td>Must be registered in GCP OAuth client</td>
+          </tr>
+          <tr>
+            <td>Post-login redirect</td>
+            <td>Front <code>FRONTEND_URL</code> + path <code>/auth/callback</code> (or <code>/</code> if that page missing)</td>
+            <td>Front can then hit <code>/me</code></td>
+          </tr>
+          <tr>
+            <td>CORS</td>
+            <td>Allowlist: <code>http://localhost:3000</code>, <code>https://aiseekhegaindia.com</code>; credentials via <code>@fastify/cors</code></td>
+            <td>Matches existing JS origins</td>
+          </tr>
+          <tr>
+            <td>Secrets prod</td>
+            <td><strong>Secret Manager</strong> → Cloud Run env / volume mounts</td>
+            <td>No secrets in image or git</td>
+          </tr>
+          <tr>
+            <td>Firebase / Identity Platform</td>
+            <td><strong>Out of scope for v1</strong></td>
+            <td>OAuth client already exists; avoid dual auth systems</td>
+          </tr>
+          <tr>
+            <td>Passport.js</td>
+            <td><strong>Do not use</strong></td>
+            <td>Use <code>google-auth-library</code> + Fastify routes; less magic</td>
+          </tr>
+          <tr>
+            <td>Rate limit</td>
+            <td><code>@fastify/rate-limit</code> on <code>/api/v1/auth/*</code> — 20 req / 15 min / IP</td>
+            <td>Stop abuse on start/callback</td>
+          </tr>
+          <tr>
+            <td>Env validation</td>
+            <td><strong>zod</strong> at startup; fail fast if missing</td>
+            <td>Clear errors before listening</td>
+          </tr>
+          <tr>
+            <td>User id</td>
+            <td>Internal <strong>UUID</strong>; store Google <code>sub</code> as unique <code>googleSub</code></td>
+            <td>Don’t expose Google sub as primary key in public APIs</td>
+          </tr>
+          <tr>
+            <td>Progress sync</td>
+            <td><strong>Deferred</strong> — keep 501 stub; schema may include empty <code>Progress</code> model later, not in auth PR</td>
+            <td>Per product constraints</td>
+          </tr>
+          <tr>
+            <td>Logging</td>
+            <td>Fastify pino JSON logs → Cloud Logging on Cloud Run; pretty in local via <code>pino-pretty</code> optional</td>
+            <td>No morgan; Fastify built-in logger</td>
+          </tr>
+          <tr>
+            <td>Node image</td>
+            <td>Official <code>node:20-alpine</code> multi-stage Docker build</td>
+            <td>Matches engines &gt;= 20.9</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="warn-box">
+        <span class="tag">Operator note (human, once)</span>
+        <p>
+          Before production deploy, register both redirect URIs on the existing OAuth client in Google Cloud Console,
+          create a Neon project (dev + prod branches), put Neon URLs + secrets in Secret Manager, and map <code>api.aiseekhegaindia.com</code> to Cloud Run.
+          The coding agent should implement against env var <em>names</em> and document these ops steps — not request console access.
+        </p>
+      </div>
+    </section>
+
+    <section id="diagram">
+      <h2>3. Architecture diagram</h2>
+      <div class="diagram">
+        <pre>
+┌─────────────┐         ┌──────────────────────┐         ┌─────────────┐
+│  Next.js    │  (1)    │  Fastify API         │  (2)    │   Google    │
+│  :3000 /    │ ──────► │  /api/v1/auth/google │ ──────► │   OAuth     │
+│  aiseekhe…  │         │                      │         │             │
+└──────┬──────┘         └──────────┬───────────┘         └──────┬──────┘
+       │                           │                            │
+       │                     (4) set cookie                     │ (3) redirect
+       │                     JWT httpOnly                       │    + code
+       │                           │                            │
+       │                           ▼                            │
+       │              ┌────────────────────────┐                │
+       │              │  Neon Postgres         │◄───────────────┘
+       │              │  (Prisma · users)      │   exchange code
+       │              └────────────────────────┘   fetch profile
+       │
+       │  (5) GET /api/v1/auth/me  credentials:include
+       └──────────────────────────────────────────►
+                         returns user JSON
+        </pre>
+      </div>
+      <p>
+        <strong>Mermaid (for docs/PRs):</strong>
+      </p>
+      <div class="diagram">
+        <pre>
+sequenceDiagram
+  participant U as User Browser
+  participant F as Next.js Front
+  participant A as Fastify API
+  participant G as Google OAuth
+  participant DB as Neon Postgres
+
+  U->>F: Click Sign in with Google
+  F->>A: Navigate GET /api/v1/auth/google
+  A->>A: Create state + PKCE verifier (cookie/store)
+  A->>G: Redirect authorize (client_id, redirect_uri, scope, state, code_challenge)
+  G->>U: Consent screen
+  G->>A: GET /callback?code&state
+  A->>A: Verify state, exchange code + verifier
+  A->>G: token + userinfo
+  A->>DB: Upsert User by googleSub
+  A->>U: Set-Cookie asid=JWT; Redirect FRONTEND_URL/auth/callback
+  U->>F: Land on front
+  F->>A: GET /api/v1/auth/me (credentials)
+  A->>F: 200 user profile
+        </pre>
+      </div>
+    </section>
+
+    <section id="framework">
+      <h2>4. Framework &amp; project structure</h2>
+
+      <div class="decision">
+        <span class="tag">Decision</span>
+        <p>Replace the Express stub with <strong>Fastify + TypeScript</strong>. Remove Express packages (<code>express</code>, <code>cors</code>, <code>helmet</code>, <code>morgan</code> and their <code>@types/*</code>). Use official Fastify plugins.</p>
+      </div>
+
+      <h3>Target tree</h3>
+      <div class="tree">
+src/
+  index.ts                 # build app + listen
+  app.ts                   # fastify factory: plugins + routes
+  config/
+    env.ts                 # zod-validated env
+  db/
+    prisma.ts              # PrismaClient singleton
+  modules/
+    auth/
+      auth.routes.ts       # FastifyPluginAsync
+      auth.controller.ts
+      auth.service.ts
+      google.ts            # OAuth URL, token exchange helpers
+      session.ts           # sign/verify JWT, cookie helpers
+    users/
+      users.service.ts
+  plugins/
+    requireAuth.ts         # preHandler / decorate request.user
+    errorHandler.ts
+  types/
+    fastify.d.ts           # FastifyRequest user augmentation
+prisma/
+  schema.prisma
+  migrations/
+Dockerfile
+      </div>
+
+      <h3>Libraries</h3>
+      <ul>
+        <li><code>fastify</code> — HTTP framework (replace Express)</li>
+        <li><code>@fastify/cors</code> — CORS with credentials</li>
+        <li><code>@fastify/helmet</code> — security headers</li>
+        <li><code>@fastify/cookie</code> — read/set cookies</li>
+        <li><code>@fastify/rate-limit</code> — auth route limits</li>
+        <li><code>zod</code> — env validation</li>
+        <li><code>dotenv</code> — load <code>.env</code> in local/dev</li>
+        <li><code>@prisma/client</code> + <code>prisma</code> (dev)</li>
+        <li><code>google-auth-library</code> — OAuth2 client / token verify</li>
+        <li><code>jsonwebtoken</code> + <code>@types/jsonwebtoken</code> — session JWT</li>
+      </ul>
+
+      <h3>API versioning</h3>
+      <p>All new routes under <code>/api/v1</code>. Keep existing <code>/health</code> unversioned. Update <code>/api/v1/meta</code> <code>features.auth</code> to <code>true</code> when Phase 4 ships. Re-implement current stub routes on Fastify with the same paths/responses.</p>
+    </section>
+
+    <section id="auth">
+      <h2>5. Auth design</h2>
+
+      <h3>Why not the alternatives</h3>
+      <table class="compare">
+        <thead>
+          <tr><th>Option</th><th>Verdict</th><th>Reason</th></tr>
+        </thead>
+        <tbody>
+          <tr class="picked">
+            <td>Backend Authorization Code + PKCE</td>
+            <td><strong>Chosen</strong></td>
+            <td>Secret stays server-side; works with httpOnly cookie session</td>
+          </tr>
+          <tr>
+            <td>Front PKCE-only (public client)</td>
+            <td>Rejected</td>
+            <td>We already have a confidential client secret; backend exchange is simpler to secure</td>
+          </tr>
+          <tr>
+            <td>GIS ID token → POST /auth/google</td>
+            <td>Rejected for v1</td>
+            <td>Fine alternative later; redirect flow needs fewer front Google SDK choices</td>
+          </tr>
+          <tr>
+            <td>Passport Google strategy</td>
+            <td>Rejected</td>
+            <td>Extra abstraction; manual Fastify routes are clearer for one provider</td>
+          </tr>
+          <tr>
+            <td>Opaque session in Redis/DB</td>
+            <td>Deferred</td>
+            <td>JWT cookie enough for v1; revoke-by-logout only</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Endpoints</h3>
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Path</th><th>Auth</th><th>Behavior</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/v1/auth/google</code></td>
+            <td>Public</td>
+            <td>Create <code>state</code> + PKCE; store verifier in short-lived httpOnly cookie <code>oauth_pkce</code>; redirect to Google</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/v1/auth/google/callback</code></td>
+            <td>Public</td>
+            <td>Validate state; exchange code; upsert user; set <code>asid</code>; clear PKCE cookie; redirect to front</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/v1/auth/me</code></td>
+            <td>Required</td>
+            <td>Return current user from JWT + DB; <code>401</code> if missing/invalid</td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/v1/auth/logout</code></td>
+            <td>Optional cookie</td>
+            <td>Clear <code>asid</code> cookie; <code>204</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>User fields persisted</h3>
+      <p>Unchanged from prior plan.</p>
+      <ul>
+        <li><code>id</code> — UUID (PK)</li>
+        <li><code>googleSub</code> — unique string from Google <code>sub</code></li>
+        <li><code>email</code> — unique</li>
+        <li><code>emailVerified</code> — boolean from Google</li>
+        <li><code>name</code> — nullable string</li>
+        <li><code>pictureUrl</code> — nullable string</li>
+        <li><code>createdAt</code> / <code>updatedAt</code></li>
+      </ul>
+
+      <h3>Front wiring (high-level only)</h3>
+      <ul>
+        <li>Sign-in button: full navigation to <code>{API_URL}/api/v1/auth/google</code> (not fetch — needs redirect).</li>
+        <li>After return to <code>/auth/callback</code>, call <code>fetch(`${API_URL}/api/v1/auth/me`, { credentials: 'include' })</code>.</li>
+        <li>Logout: <code>POST .../auth/logout</code> with credentials, then clear local UI state.</li>
+        <li>Front env: <code>NEXT_PUBLIC_API_URL=http://localhost:4000</code> (prod API URL later).</li>
+      </ul>
+
+      <h3>Google Cloud Console (human checklist)</h3>
+      <p>GCP OAuth / Identity setup is unchanged and fine as planned.</p>
+      <ul class="checklist">
+        <li>OAuth client type: Web application (already)</li>
+        <li>Authorized JavaScript origins: <code>http://localhost:3000</code>, <code>https://aiseekhegaindia.com</code></li>
+        <li>Authorized redirect URIs: add both callback URLs from Decision register</li>
+        <li>Scopes used in code: <code>openid</code>, <code>email</code>, <code>profile</code></li>
+        <li>APIs: ensure OAuth consent screen is configured (External or Internal as appropriate)</li>
+        <li><strong>Do not</strong> enable Cloud SQL Admin API — database is Neon, not Cloud SQL</li>
+      </ul>
+    </section>
+
+    <section id="db">
+      <h2>6. Database &amp; data layer</h2>
+
+      <h3>Comparison</h3>
+      <table class="compare">
+        <thead>
+          <tr><th>Option</th><th>Verdict</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr class="picked">
+            <td>Neon (serverless Postgres)</td>
+            <td><strong>Chosen</strong></td>
+            <td>Managed Postgres, branching, pooling, generous free tier; Prisma-native</td>
+          </tr>
+          <tr>
+            <td>Cloud SQL PostgreSQL</td>
+            <td>Rejected</td>
+            <td>Higher always-on cost; extra GCP wiring for solo builder</td>
+          </tr>
+          <tr>
+            <td>Firestore</td>
+            <td>Rejected</td>
+            <td>Weaker relational joins for curriculum progress; different query model</td>
+          </tr>
+          <tr>
+            <td>MongoDB Atlas</td>
+            <td>Rejected</td>
+            <td>Different model; Neon covers relational needs</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="decision">
+        <span class="tag">Decision</span>
+        <p>Use <strong>Neon</strong> for both local development and production. Prefer a Neon <strong>development branch</strong> for local and a <strong>production branch</strong> for Cloud Run. No <code>docker-compose</code> database.</p>
+      </div>
+
+      <h3>Prisma schema sketch</h3>
+      <p>User schema unchanged.</p>
+      <div class="tree">
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  googleSub     String   @unique
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  name          String?
+  pictureUrl    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Progress intentionally NOT in auth milestone
+      </div>
+
+      <h3>Migrations</h3>
+      <ul>
+        <li>Local/dev: <code>npx prisma migrate dev</code> against Neon <code>DIRECT_URL</code></li>
+        <li>Prod: <code>npx prisma migrate deploy</code> in CI / one-off job against prod <code>DIRECT_URL</code></li>
+        <li><strong>Decision:</strong> run migrations as a CI step or Cloud Run Job before new revision traffic — not on every container boot</li>
+      </ul>
+
+      <h3>Local vs production</h3>
+      <ul>
+        <li><strong>Local:</strong> Neon console → copy pooled + direct URLs into <code>.env</code> (dev branch)</li>
+        <li><strong>Prod:</strong> Neon production branch URLs in Secret Manager; Cloud Run uses pooled <code>DATABASE_URL</code></li>
+        <li>Always use SSL (<code>?sslmode=require</code> is typical on Neon connection strings)</li>
+      </ul>
+    </section>
+
+    <section id="gcp">
+      <h2>7. GCP recommendations</h2>
+
+      <div class="decision">
+        <span class="tag">Decision</span>
+        <p>Host API on Cloud Run in <code>asia-south1</code>. Database is <strong>Neon</strong> (outside GCP). Store secrets (including Neon URLs) in Secret Manager. Keep custom Google OAuth (no Identity Platform in v1). GCP OAuth / Identity APIs unchanged.</p>
+      </div>
+
+      <h3>Compute comparison</h3>
+      <table class="compare">
+        <thead>
+          <tr><th>Option</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+          <tr class="picked"><td>Cloud Run</td><td><strong>Chosen</strong> — container, HTTPS, scale-to-zero, low ops</td></tr>
+          <tr><td>App Engine</td><td>Rejected — less portable container story</td></tr>
+          <tr><td>GCE VM</td><td>Rejected — patching &amp; uptime burden</td></tr>
+          <tr><td>GKE</td><td>Rejected — overkill for solo / small API</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Secrets mapping</h3>
+      <table>
+        <thead>
+          <tr><th>Secret / env</th><th>Local</th><th>Cloud Run</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>GOOGLE_CLIENT_SECRET</code></td><td><code>.env</code></td><td>Secret Manager</td></tr>
+          <tr><td><code>SESSION_SECRET</code></td><td><code>.env</code> (32+ random bytes)</td><td>Secret Manager</td></tr>
+          <tr><td><code>DATABASE_URL</code></td><td>Neon pooled URL in <code>.env</code></td><td>Secret Manager</td></tr>
+          <tr><td><code>DIRECT_URL</code></td><td>Neon direct URL in <code>.env</code></td><td>Secret Manager (migrate job only)</td></tr>
+          <tr><td>Non-secret config</td><td><code>.env</code></td><td>Plain Cloud Run env vars</td></tr>
+        </tbody>
+      </table>
+
+      <h3>IAM (least privilege)</h3>
+      <ul>
+        <li>Cloud Run runtime SA: Secret Manager Secret Accessor only (needed secrets) — <strong>no Cloud SQL Client role</strong></li>
+        <li>Deploy SA (CI): Cloud Run Admin, Artifact Registry Writer, limited Secret Manager if needed</li>
+        <li>Do not use Owner key in apps</li>
+      </ul>
+
+      <h3>APIs to enable (when deploying)</h3>
+      <ul>
+        <li>Cloud Run API</li>
+        <li>Artifact Registry API</li>
+        <li>Secret Manager API</li>
+        <li>Cloud Logging (usually on by default)</li>
+        <li>Google OAuth / consent screen (already) — unchanged</li>
+        <li><strong>Not needed:</strong> Cloud SQL Admin API</li>
+      </ul>
+
+      <h3>HTTPS &amp; domain</h3>
+      <ul>
+        <li>Cloud Run provides <code>*.run.app</code> HTTPS immediately for testing</li>
+        <li>Map <code>api.aiseekhegaindia.com</code> via Cloud Run domain mapping / Load Balancer when ready</li>
+        <li>Update OAuth redirect URI when custom domain is live</li>
+      </ul>
+
+      <h3>Billing caveats</h3>
+      <ul>
+        <li>Neon free/launch tiers cover early traffic; watch compute time + storage limits</li>
+        <li>Cloud Run scale-to-zero remains cheap; no Cloud SQL monthly floor</li>
+        <li>Use Neon branch isolation so prod data is never pointed at by local <code>.env</code> by mistake</li>
+      </ul>
+
+      <div class="warn-box">
+        <span class="tag">Identity Platform vs custom OAuth</span>
+        <p>
+          Firebase Auth / Identity Platform would offload sessions and multi-provider support, but duplicates the OAuth client you already configured and couples the front to Firebase SDKs.
+          <strong>Stick to custom Google OAuth on Fastify for v1.</strong> Revisit only if you add multiple IdPs or need managed MFA.
+        </p>
+      </div>
+    </section>
+
+    <section id="security">
+      <h2>8. Security checklist</h2>
+      <ul class="checklist">
+        <li><code>.env</code> in <code>.gitignore</code>; never commit secrets; rotate <code>GOOGLE_CLIENT_SECRET</code> if it was ever pasted into chat</li>
+        <li>Cookie <code>asid</code>: <code>httpOnly</code>, <code>secure</code> in production, <code>sameSite: 'lax'</code>, <code>path: '/'</code> via <code>@fastify/cookie</code></li>
+        <li>CORS allowlist only with credentials; never reflect arbitrary Origin</li>
+        <li>Validate OAuth <code>state</code>; use PKCE S256; single-use code exchange</li>
+        <li>Verify ID token <code>aud</code> === <code>GOOGLE_CLIENT_ID</code> when using ID token claims</li>
+        <li>Rate-limit auth routes with <code>@fastify/rate-limit</code>; use <code>@fastify/helmet</code></li>
+        <li>Zod-validate env; generic 500 bodies (<code>{ error: "internal_error" }</code>); log details server-side only</li>
+        <li><code>SESSION_SECRET</code> ≥ 32 random bytes; different per environment</li>
+        <li>Do not put JWT in <code>localStorage</code></li>
+        <li>Keep Neon URLs out of git; use pooled URL in the running API</li>
+      </ul>
+    </section>
+
+    <section id="phases">
+      <h2>9. Implementation phases</h2>
+
+      <div class="phase">
+        <div class="phase-head">
+          <span class="phase-num">Phase 1</span>
+          <h3>Fastify bootstrap + env validation</h3>
+        </div>
+        <p>Replace Express with Fastify app factory. Add <code>dotenv</code>, <code>src/config/env.ts</code> (zod). Register <code>@fastify/cors</code>, <code>@fastify/helmet</code>, <code>@fastify/cookie</code>. Port <code>/health</code> and <code>/api/v1/meta</code>.</p>
+        <p class="accept"><strong>Accept:</strong> Server refuses to start with a clear error if required env is missing; <code>/health</code> works on Fastify when env is valid.</p>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <span class="phase-num">Phase 2</span>
+          <h3>Neon + User model</h3>
+        </div>
+        <p>Add Prisma with <code>DATABASE_URL</code> + <code>DIRECT_URL</code> for Neon. Migrate User model; <code>users.service</code> upsert-by-<code>googleSub</code>.</p>
+        <p class="accept"><strong>Accept:</strong> <code>prisma migrate dev</code> applies against Neon; can create/read a user via service call.</p>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <span class="phase-num">Phase 3</span>
+          <h3>Google OAuth endpoints + session</h3>
+        </div>
+        <p>Implement start + callback + logout as Fastify routes; JWT cookie helpers; PKCE + state; <code>@fastify/rate-limit</code>.</p>
+        <p class="accept"><strong>Accept:</strong> Browser completes Google login locally; <code>asid</code> cookie set; bad state returns 400; logout clears cookie.</p>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <span class="phase-num">Phase 4</span>
+          <h3>Protected <code>/api/v1/auth/me</code></h3>
+        </div>
+        <p><code>requireAuth</code> preHandler; return safe user DTO; update <code>/api/v1/meta</code> <code>features.auth: true</code>.</p>
+        <p class="accept"><strong>Accept:</strong> With cookie → 200 user JSON; without → 401; meta flag true.</p>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <span class="phase-num">Phase 5</span>
+          <h3>Wire Next.js front (thin)</h3>
+        </div>
+        <p>Sign-in link, optional <code>/auth/callback</code> page, client helper for <code>/me</code> + logout. No redesign.</p>
+        <p class="accept"><strong>Accept:</strong> From front on localhost:3000, user can sign in and see name/email from API.</p>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <span class="phase-num">Phase 6</span>
+          <h3>Deploy to Cloud Run</h3>
+        </div>
+        <p>Dockerfile, Artifact Registry, Secret Manager (incl. Neon URLs), domain/redirect URI updates. Document Neon + GCP ops in README.</p>
+        <p class="accept"><strong>Accept:</strong> Production callback URI works; <code>/health</code> and <code>/me</code> succeed on custom or run.app URL.</p>
+      </div>
+
+      <div class="warn-box">
+        <span class="tag">Deferred (do not implement in auth plan)</span>
+        <p>Curriculum progress sync API, search, NestJS, Firebase Auth, Redis session store, refresh-token rotation, multi-provider login, email/password, Cloud SQL.</p>
+      </div>
+    </section>
+
+    <section id="env">
+      <h2>10. Env var checklist</h2>
+
+      <h3>Already present (keep)</h3>
+      <table>
+        <thead><tr><th>Name</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>GOOGLE_CLIENT_ID</code></td><td>Required</td></tr>
+          <tr><td><code>GOOGLE_CLIENT_SECRET</code></td><td>Required; Secret Manager in prod</td></tr>
+          <tr><td><code>GOOGLE_PROJECT_ID</code></td><td>Informational / future GCP tooling</td></tr>
+          <tr><td><code>GOOGLE_AUTH_URI</code></td><td>Optional override; default Google auth URL if unset</td></tr>
+          <tr><td><code>GOOGLE_TOKEN_URI</code></td><td>Optional override; default token URL if unset</td></tr>
+          <tr><td><code>GOOGLE_AUTH_PROVIDER_CERT_URL</code></td><td>Optional; certs URL for verification</td></tr>
+          <tr><td><code>GOOGLE_JAVASCRIPT_ORIGINS</code></td><td>Document only; CORS uses <code>CORS_ORIGIN</code> / <code>FRONTEND_URL</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Add these</h3>
+      <table>
+        <thead><tr><th>Name</th><th>Example / rule</th><th>Required</th></tr></thead>
+        <tbody>
+          <tr><td><code>NODE_ENV</code></td><td><code>development</code> | <code>production</code></td><td>Yes</td></tr>
+          <tr><td><code>PORT</code></td><td><code>4000</code></td><td>No (default 4000)</td></tr>
+          <tr><td><code>DATABASE_URL</code></td><td>Neon <strong>pooled</strong> connection string</td><td>Yes</td></tr>
+          <tr><td><code>DIRECT_URL</code></td><td>Neon <strong>direct</strong> connection string (migrations)</td><td>Yes</td></tr>
+          <tr><td><code>SESSION_SECRET</code></td><td>Random ≥ 32 chars</td><td>Yes</td></tr>
+          <tr><td><code>GOOGLE_REDIRECT_URI</code></td><td><code>http://localhost:4000/api/v1/auth/google/callback</code></td><td>Yes</td></tr>
+          <tr><td><code>FRONTEND_URL</code></td><td><code>http://localhost:3000</code></td><td>Yes</td></tr>
+          <tr><td><code>CORS_ORIGIN</code></td><td><code>http://localhost:3000,https://aiseekhegaindia.com</code></td><td>Yes</td></tr>
+          <tr><td><code>COOKIE_SECURE</code></td><td><code>false</code> local, <code>true</code> prod</td><td>Yes (or derive from NODE_ENV)</td></tr>
+          <tr><td><code>SESSION_TTL_DAYS</code></td><td><code>7</code></td><td>No (default 7)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="decision">
+        <span class="tag">Decision</span>
+        <p>
+          Derive <code>COOKIE_SECURE</code> from <code>NODE_ENV === 'production'</code> if unset.
+          Agent may add placeholder lines to <code>.env.example</code> (never real secrets). Do not modify the user’s real secret values except documenting new keys to add.
+        </p>
+      </div>
+    </section>
+
+    <section id="risks">
+      <h2>11. Risks &amp; open decisions</h2>
+      <p><strong>Open decisions for the human:</strong> none that block coding. Remaining items are ops timing only.</p>
+      <table>
+        <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>OAuth redirect URI mismatch</td>
+            <td>Document exact URIs; fail callback with clear log if Google returns redirect_uri_mismatch</td>
+          </tr>
+          <tr>
+            <td>Cross-site cookie on different API domain</td>
+            <td>Use <code>SameSite=Lax</code> + top-level OAuth redirect; credentialed CORS; reverse-proxy under same site later if needed</td>
+          </tr>
+          <tr>
+            <td>JWT cannot be revoked server-side</td>
+            <td>Accept for v1; short TTL optional later; logout clears cookie only</td>
+          </tr>
+          <tr>
+            <td>Neon cold start / compute limits</td>
+            <td>Use pooled URL; consider Neon scale settings; separate prod branch</td>
+          </tr>
+          <tr>
+            <td>Prisma migrate vs pooler</td>
+            <td>Always migrate with <code>DIRECT_URL</code>; never run migrate through the pooler endpoint</td>
+          </tr>
+          <tr>
+            <td>Secret leaked in chat/history</td>
+            <td>Rotate Google client secret in Console before prod</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="pr">
+      <h2>12. Suggested first PR / milestone</h2>
+      <p><strong>PR title:</strong> <code>feat(auth): fastify bootstrap, neon prisma user, google oauth + session cookie</code></p>
+      <ul>
+        <li>Phases 1–4 in backend only (front can be PR 2)</li>
+        <li>Include <code>.env.example</code> (with Neon URL placeholders), Prisma migration, Fastify auth routes, README auth + Neon section</li>
+        <li>Remove Express dependencies in the same PR</li>
+        <li>Do not deploy Cloud Run in the first PR unless infra is already ready — Phase 6 as follow-up</li>
+      </ul>
+
+      <h3>Agent execution rules</h3>
+      <ul>
+        <li>Do not ask the user to choose framework, DB, OAuth flow, region, cookie name, or ORM — use Fastify + Neon + Prisma</li>
+        <li>Do not request GCP or Neon console access; implement code + document human ops checklists</li>
+        <li>Do not print or commit secret values</li>
+        <li>Do not implement progress sync</li>
+        <li>Follow this HTML plan as the source of truth</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>AISeekhegaIndia · Auth Implementation Plan · Fastify + Neon · Locked decisions for agent execution.</p>
+      <p>Path: <code>aiseekhegaindia-backend/AUTH_IMPLEMENTATION_PLAN.html</code></p>
+    </footer>
+  </div>
+</body>
+</html>
