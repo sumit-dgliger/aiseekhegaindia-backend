@@ -51,9 +51,10 @@ Suggested flow:
 
 1. Enable Cloud Run, Artifact Registry, Secret Manager APIs
 2. Store secrets: `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `DATABASE_URL`, `DIRECT_URL` (migrate job only)
-3. Set plain env: `NODE_ENV=production`, `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, `FRONTEND_URL`, `CORS_ORIGIN`, `PORT=8080`
-4. Run `npx prisma migrate deploy` as a CI step / Cloud Run Job **before** traffic (not on container boot)
-5. Map `api.aiseekhegaindia.com` when ready; update OAuth redirect URI
+3. Set plain env: `NODE_ENV=production`, `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI` (must be `{API}/api/v1/auth/google/callback`), `FRONTEND_URL`, `CORS_ORIGIN` (optional; defaults to `FRONTEND_URL`), `PORT=8080`
+4. Runtime also accepts missing `DIRECT_URL` (falls back to `DATABASE_URL`). Still set `DIRECT_URL` for migrate jobs.
+5. Run `npx prisma migrate deploy` as a CI step / Cloud Run Job **before** traffic (not on container boot)
+6. Map `api.aiseekhegaindia.com` when ready; update OAuth redirect URI
 
 Runtime SA needs Secret Manager accessor only — **no** Cloud SQL Client role.
 

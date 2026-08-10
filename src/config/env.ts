@@ -1,60 +1,66 @@
 import { config as loadDotenv } from "dotenv";
-import { z } from "zod";
 
-loadDotenv();
+// Local .env only. On Cloud Run, secrets/env come from the service config.
+loadDotenv({ quiet: true });
 
-const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-  PORT: z.coerce.number().int().positive().default(4000),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required (Neon pooled URL)"),
-  DIRECT_URL: z.string().min(1, "DIRECT_URL is required (Neon direct URL)"),
-  SESSION_SECRET: z
-    .string()
-    .min(32, "SESSION_SECRET must be at least 32 characters"),
-  GOOGLE_CLIENT_ID: z.string().min(1),
-  GOOGLE_CLIENT_SECRET: z.string().min(1),
-  GOOGLE_REDIRECT_URI: z.string().url(),
-  FRONTEND_URL: z.string().url(),
-  CORS_ORIGIN: z.string().min(1),
-  COOKIE_SECURE: z
-    .enum(["true", "false"])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === "true")),
-  SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
-  GOOGLE_PROJECT_ID: z.string().optional(),
-  GOOGLE_AUTH_URI: z.string().url().optional(),
-  GOOGLE_TOKEN_URI: z.string().url().optional(),
-  GOOGLE_AUTH_PROVIDER_CERT_URL: z.string().url().optional(),
-});
-
-export type Env = z.infer<typeof envSchema> & {
-  cookieSecure: boolean;
-  corsOrigins: string[];
-};
-
-function parseEnv(): Env {
-  const result = envSchema.safeParse(process.env);
-  if (!result.success) {
-    const details = result.error.issues
-      .map(
-        (issue) => `  - ${issue.path.join(".") || "(root)"}: ${issue.message}`,
-      )
-      .join("\n");
-    throw new Error(`Invalid environment configuration:\n${details}`);
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
   }
-
-  const data = result.data;
-  const cookieSecure = data.COOKIE_SECURE ?? data.NODE_ENV === "production";
-
-  return {
-    ...data,
-    cookieSecure,
-    corsOrigins: data.CORS_ORIGIN.split(",")
-      .map((o) => o.trim())
-      .filter(Boolean),
-  };
+  return value;
 }
 
-export const env = parseEnv();
+function optional(name: string): string | undefined {
+  const value = process.env[name];
+  return value && value.length > 0 ? value : undefined;
+}
+
+const NODE_ENV = optional("NODE_ENV") ?? "development";
+const DATABASE_URL = required("DATABASE_URL");
+const DIRECT_URL = optional("DIRECT_URL") ?? DATABASE_URL;
+// Prisma schema reads process.env.DIRECT_URL for directUrl
+if (!process.env.DIRECT_URL) {
+  process.env.DIRECT_URL = DIRECT_URL;
+}
+const SESSION_SECRET = required("SESSION_SECRET");
+const GOOGLE_CLIENT_ID = required("GOOGLE_CLIENT_ID");
+const GOOGLE_CLIENT_SECRET = required("GOOGLE_CLIENT_SECRET");
+const GOOGLE_REDIRECT_URI = required("GOOGLE_REDIRECT_URI");
+const FRONTEND_URL = required("FRONTEND_URL");
+const CORS_ORIGIN = optional("CORS_ORIGIN") ?? FRONTEND_URL;
+const SESSION_TTL_DAYS = Number.parseInt(
+  optional("SESSION_TTL_DAYS") ?? "7",
+  10,
+);
+const PORT = Number.parseInt(optional("PORT") ?? "8080", 10);
+
+const cookieSecureEnv = optional("COOKIE_SECURE");
+const cookieSecure =
+  cookieSecureEnv === undefined
+    ? NODE_ENV === "production"
+    : cookieSecureEnv === "true";
+
+export const env = {
+  NODE_ENV,
+  PORT,
+  DATABASE_URL,
+  DIRECT_URL,
+  SESSION_SECRET,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI,
+  FRONTEND_URL,
+  CORS_ORIGIN,
+  SESSION_TTL_DAYS,
+  GOOGLE_PROJECT_ID: optional("GOOGLE_PROJECT_ID"),
+  GOOGLE_AUTH_URI: optional("GOOGLE_AUTH_URI"),
+  GOOGLE_TOKEN_URI: optional("GOOGLE_TOKEN_URI"),
+  GOOGLE_AUTH_PROVIDER_CERT_URL: optional("GOOGLE_AUTH_PROVIDER_CERT_URL"),
+  cookieSecure,
+  corsOrigins: CORS_ORIGIN.split(",")
+    .map((o) => o.trim())
+    .filter(Boolean),
+};
+
+export type Env = typeof env;
