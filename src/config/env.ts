@@ -4,8 +4,10 @@ import { z } from "zod";
 loadDotenv();
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  PORT: z.coerce.number().int().positive().default(4000),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
+  SERVER_PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required (Neon pooled URL)"),
   DIRECT_URL: z.string().min(1, "DIRECT_URL is required (Neon direct URL)"),
   SESSION_SECRET: z
@@ -36,14 +38,15 @@ function parseEnv(): Env {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
     const details = result.error.issues
-      .map((issue) => `  - ${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .map(
+        (issue) => `  - ${issue.path.join(".") || "(root)"}: ${issue.message}`,
+      )
       .join("\n");
     throw new Error(`Invalid environment configuration:\n${details}`);
   }
 
   const data = result.data;
-  const cookieSecure =
-    data.COOKIE_SECURE ?? data.NODE_ENV === "production";
+  const cookieSecure = data.COOKIE_SECURE ?? data.NODE_ENV === "production";
 
   return {
     ...data,
