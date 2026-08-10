@@ -7,7 +7,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  SERVER_PORT: z.coerce.number().int().positive().default(4000),
+  PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required (Neon pooled URL)"),
   DIRECT_URL: z.string().min(1, "DIRECT_URL is required (Neon direct URL)"),
   SESSION_SECRET: z
